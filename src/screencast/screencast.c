@@ -55,9 +55,33 @@ int setup_outputs(struct xdpw_screencast_context *ctx, struct xdpw_session *sess
 			abort();
 		}
 	} else {
-		out = xdpw_wlr_output_first(&ctx->output_list);
+        const char *slurp_path = getenv("SLURP_PATH");
+        if(slurp_path == NULL) {
+            slurp_path = "slurp";
+        }
+
+        char command[256];
+        memset(command, sizeof(command), 0);
+
+        strncpy(command, slurp_path, sizeof(command));
+        strncat(command, " -f \"%o\" -o", sizeof(command) - 1);
+
+        FILE *fp = popen(command, "r");
+        char output_name[256];
+        memset(output_name, 0, sizeof(output_name));
+        if(fgets(output_name, sizeof(output_name), fp) == NULL) {
+            return 1;
+        }
+        char *newline = strchr(output_name, '\n');
+        if(newline != NULL)
+            *newline = '\0';
+        pclose(fp);
+
+        fflush(stdout);
+
+		out = xdpw_wlr_output_find_by_name(&ctx->output_list, output_name);
 		if (!out) {
-			logprint(ERROR, "wlroots: no output found");
+			logprint(ERROR, "wlroots: no such output");
 			abort();
 		}
 	}
